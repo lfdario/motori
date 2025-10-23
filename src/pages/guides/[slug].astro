@@ -1,11 +1,20 @@
 ---
 import Post from "@/layouts/Post.astro";
-import { getEntry } from "astro:content";
-const { slug } = Astro.params;
-const entry = await getEntry("guides", slug);
-if (!entry) throw new Error(`Guida non trovata: ${slug}`);
+import { getCollection } from "astro:content";
+
+// Genera le pagine statiche per tutte le guide
+export async function getStaticPaths() {
+  const posts = await getCollection("guides");
+  return posts.map((entry) => ({
+    params: { slug: entry.slug },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
 const { Content } = await entry.render();
 ---
+
 <Post {...entry.data}>
   <Content />
 </Post>
