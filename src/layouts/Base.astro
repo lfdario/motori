@@ -1,0 +1,27 @@
+---
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
+const { title = "Motori • News, Prove, Elettrico", description = "Notizie auto, prove su strada, elettrico, guide all'acquisto.", noIndex = false } = Astro.props;
+---
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    { noIndex && <meta name="robots" content="noindex" /> }
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://lfdario.github.io/motori/" />
+    <link rel="stylesheet" href="/motori/src/styles.css" />
+  </head>
+  <body class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+    <Header />
+    <main class="container max-w-6xl py-6">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>

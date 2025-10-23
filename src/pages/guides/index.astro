@@ -1,0 +1,21 @@
+---
+import Base from "@/layouts/Base.astro";
+import ArticleCard from "@/components/ArticleCard.astro";
+import { getCollection } from "astro:content";
+const posts = (await getCollection("guides")).sort((a,b) => (b.data.pubDate).localeCompare(a.data.pubDate));
+---
+<Base title="Guide all'acquisto" description="Consigli pratici per scegliere l'auto giusta.">
+  <h1 class="text-2xl font-bold mb-4">Guide</h1>
+  <div class="grid md:grid-cols-2 gap-4">
+    {posts.map((p) => (
+      <ArticleCard
+        href={`${import.meta.env.BASE_URL}guides/${p.slug}/`}
+        cover={p.data.cover ?? `${import.meta.env.BASE_URL}images/placeholder.jpg`}
+        title={p.data.title}
+        excerpt={p.data.description}
+        category="Guide"
+        date={new Date(p.data.pubDate).toLocaleDateString("it-IT")}
+      />
+    ))}
+  </div>
+</Base>
