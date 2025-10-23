@@ -1,7 +1,7 @@
 ---
 title: "Guida: assicurazione auto, come risparmiare davvero"
 description: "Classi di merito, scatole nere e franchigie spiegate semplice."
-cover: cover: "/motori/images/placeholder.jpg"
+cover: "/motori/images/placeholder.jpg"
 categories: ["Guides"]
 tags: ["auto","novità"]
 author: "Redazione"
