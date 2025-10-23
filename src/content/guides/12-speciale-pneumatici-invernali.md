@@ -1,7 +1,7 @@
 ---
 title: "Speciale pneumatici invernali"
 description: "Quando montarli, differenze tra M+S e 3PMSF, pressione e stoccaggio."
-cover: cover: "/motori/images/placeholder.jpg"
+cover: "/motori/images/placeholder.jpg"
 categories: ["Guides"]
 tags: ["auto","novità"]
 author: "Redazione"
