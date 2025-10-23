@@ -1,7 +1,7 @@
 ---
 title: "Elettrico: cosa sapere sulle colonnine domestiche"
 description: "Wallbox, potenza del contatore e detrazioni: le basi per ricaricare a casa."
-cover: "/site-automation-pro/images/placeholder.jpg"
+cover: cover: "/motori/images/placeholder.jpg"
 categories: ["Guides"]
 tags: ["auto","novità"]
 author: "Redazione"
