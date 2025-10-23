@@ -1,6 +1,6 @@
 // scripts/generate-content.mjs
-// Genera un articolo in src/content/<category>/ e, se possibile, una cover in public/images/<slug>.jpg
-// Richiede nei Secrets del repo: OPENAI_API_KEY (obbligatorio), UNSPLASH_ACCESS_KEY (opzionale).
+// Genera un articolo in src/content/<category>/ e una cover in public/images/<slug>-<ts>.jpg (se possibile).
+// Secrets richiesti: OPENAI_API_KEY (obbligatorio), UNSPLASH_ACCESS_KEY (opzionale).
 
 import fs from "node:fs";
 import path from "node:path";
@@ -11,33 +11,40 @@ const USER_PROMPT = process.env.USER_PROMPT || "Novità automotive";
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY || "";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 
-// Token che vogliamo scrivere letteralmente nel front-matter.
-// NON interpolarlo: deve restare letterale nel .md.
+// NON interpolare questo token: deve rimanere letterale nel .md
 const BASE_URL_TOKEN = "${import.meta.env.BASE_URL}";
 
 // ====== UTIL ================================================================
-
 function slugify(s) {
   return String(s)
     .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // rimuove accenti
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/['’]/g, "-")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
 }
-
+function nowStamp() {
+  // es: 20251023T081530
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return (
+    d.getFullYear().toString() +
+    pad(d.getMonth() + 1) +
+    pad(d.getDate()) +
+    "T" +
+    pad(d.getHours()) +
+    pad(d.getMinutes()) +
+    pad(d.getSeconds())
+  );
+}
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
-
 function ensureDir(p) {
   fs.mkdirSync(p, { recursive: true });
 }
-
 function quoteYAML(s) {
-  // Escapa i doppi apici e rimuovi CR che possono rompere YAML
   return String(s).replace(/"/g, '\\"').replace(/\r/g, "");
 }
 
@@ -80,41 +87,37 @@ async function generateStructuredJSON(kind, brief) {
   const res = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     temperature: 0.7,
-    // 👇 forza una risposta JSON valida
-    response_format: { type: "json_object" },
+    response_format: { type: "json_object" }, // forza JSON valido
     messages: [{ role: "user", content: prompt }],
   });
 
   let text = res.choices?.[0]?.message?.content?.trim() ?? "";
-  // safety: rimuovi eventuali fence per scrupolo
   text = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
 
+  let json;
   try {
-    const json = JSON.parse(text);
-    if (!json.title || !json.description || !json.body) {
-      throw new Error("JSON senza campi obbligatori");
-    }
-    return json;
+    json = JSON.parse(text);
   } catch (e) {
-    console.error("Risposta non JSON o incompleta:\n", text);
+    console.error("Risposta non JSON o invalida:\n", text);
     throw new Error("JSON non trovato o non valido");
   }
+  if (!json.title || !json.description || !json.body) {
+    throw new Error("JSON senza campi obbligatori");
+  }
+  return json;
 }
 
 // ====== UNSPLASH (opzionale) ===============================================
-
 async function fetchJSON(url, headers = {}) {
   const r = await fetch(url, { headers });
   if (!r.ok) throw new Error(`HTTP ${r.status} ${url}`);
   return await r.json();
 }
-
 async function fetchImageBuffer(url) {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`HTTP ${r.status} ${url}`);
   return Buffer.from(await r.arrayBuffer());
 }
-
 async function downloadUnsplash(query, outPath) {
   if (!UNSPLASH_ACCESS_KEY) return false;
   try {
@@ -138,7 +141,6 @@ async function downloadUnsplash(query, outPath) {
 }
 
 // ====== MAIN ===============================================================
-
 (async () => {
   try {
     console.log(`→ Generazione: ${CATEGORY} | brief="${USER_PROMPT}"`);
@@ -149,6 +151,7 @@ async function downloadUnsplash(query, outPath) {
     );
 
     const slug = slugify(title);
+    const ts = nowStamp(); // garantisce filename univoco
     const mdDir = path.join(
       process.cwd(),
       "src",
@@ -159,15 +162,15 @@ async function downloadUnsplash(query, outPath) {
     ensureDir(mdDir);
     ensureDir(imgDir);
 
-    // Cover: tenta Unsplash; se fallisce, userai il placeholder nel sito
-    const coverFilename = `${slug}.jpg`;
+    // Cover (opzionale): usa la query del brief
+    const coverFilename = `${slug}-${ts}.jpg`;
     const coverFile = path.join(imgDir, coverFilename);
     let coverExists = false;
     if (await downloadUnsplash(USER_PROMPT, coverFile)) {
       coverExists = true;
       console.log(`✔ Cover scaricata: public/images/${coverFilename}`);
     } else {
-      console.log("ℹ️ Nessuna cover scaricata: userai il placeholder.");
+      console.log("ℹ️ Nessuna cover scaricata: verrà usato il placeholder.");
     }
 
     // Front-matter YAML (sempre quotato)
@@ -184,14 +187,14 @@ async function downloadUnsplash(query, outPath) {
       "",
     ].join("\n");
 
-    // Corpo: HTML semplice restituito dal modello
     const content = `${frontmatter}\n${body}\n`;
 
-    const mdFile = path.join(mdDir, `${slug}.md`);
+    // Filename sempre nuovo con timestamp
+    const mdFile = path.join(mdDir, `${slug}-${ts}.md`);
     fs.writeFileSync(mdFile, content, "utf-8");
 
     console.log(`✔ Articolo creato: ${path.relative(process.cwd(), mdFile)}`);
-    console.log("✅ Fatto. Fai partire il deploy (workflow Pages) e verifica il sito.");
+
   } catch (e) {
     console.error("❌ Errore:", e.message);
     process.exit(1);
