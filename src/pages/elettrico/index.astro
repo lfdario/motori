@@ -1,0 +1,41 @@
+---
+import Base from "@/layouts/Base.astro";
+import ArticleCard from "@/components/ArticleCard.astro";
+import { getCollection } from "astro:content";
+
+// Prendiamo news + guides che contengono "elettric" in titolo/descrizione o tag
+const news = await getCollection("news");
+const guides = await getCollection("guides");
+
+function isEV(entry) {
+  const t = (entry.data.title + " " + entry.data.description + " " + (entry.data.tags || []).join(" ")).toLowerCase();
+  return t.includes("elettric"); // copre "elettrico", "elettriche", ecc.
+}
+
+const posts = [...news, ...guides]
+  .filter(isEV)
+  .sort((a, b) => b.data.pubDate.localeCompare(a.data.pubDate));
+---
+
+<Base title="Elettrico" description="Novità, guide e approfondimenti su ricarica, autonomia e incentivi.">
+  <h1 class="text-2xl font-bold mb-4">Elettrico</h1>
+
+  {posts.length === 0 && (
+    <p class="text-gray-600 dark:text-gray-300">
+      Nessun contenuto trovato. Aggiungi articoli con tag o parole chiave "elettrico".
+    </p>
+  )}
+
+  <div class="grid md:grid-cols-2 gap-4">
+    {posts.map((p) => (
+      <ArticleCard
+        href={`${import.meta.env.BASE_URL}${p.collection}/${p.slug}/`}
+        cover={p.data.cover ?? `${import.meta.env.BASE_URL}images/placeholder.jpg`}
+        title={p.data.title}
+        excerpt={p.data.description}
+        category={p.collection === "news" ? "News" : "Guida"}
+        date={new Date(p.data.pubDate).toLocaleDateString("it-IT")}
+      />
+    ))}
+  </div>
+</Base>
