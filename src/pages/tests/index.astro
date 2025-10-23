@@ -8,14 +8,14 @@ const posts = (await getCollection("tests")).sort((a,b) => (b.data.pubDate).loca
   <h1 class="text-2xl font-bold mb-4">Prove</h1>
   <div class="grid md:grid-cols-2 gap-4">
     {posts.map((p) => (
-      <ArticleCard
-        href={`/site-automation-pro/tests/${p.slug}/`}
-        cover={p.data.cover ?? "/site-automation-pro/images/placeholder.jpg"}
-        title={p.data.title}
-        excerpt={p.data.description}
-        category="Prove"
-        date={new Date(p.data.pubDate).toLocaleDateString("it-IT")}
-      />
+     <ArticleCard
+  href={`${import.meta.env.BASE_URL}news/${p.slug}/`}
+  cover={p.data.cover ?? `${import.meta.env.BASE_URL}images/placeholder.jpg`}
+  title={p.data.title}
+  excerpt={p.data.description}
+  category="News"
+  date={new Date(p.data.pubDate).toLocaleDateString("it-IT")}
+/>
     ))}
   </div>
 </Base>
