@@ -41,13 +41,27 @@ jobs:
           USER_PROMPT: ${{ github.event.inputs.prompt }}
         run: node scripts/generate-content.mjs
 
+      - name: Show repo changes (debug)
+        run: |
+          echo "---- git status ----"
+          git status
+          echo "---- last 30 changed files ----"
+          git diff --name-only --cached | tail -n 30 || true
+          echo "---- tree content dirs ----"
+          ls -la src/content || true
+          ls -la src/content/news || true
+          ls -la src/content/tests || true
+          ls -la src/content/guides || true
+          ls -la public/images || true
+
       - name: Commit & push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
           if git diff --cached --quiet; then
-            echo "No changes to commit."
+            echo "::error::Nessun file generato. Verifica i log dello step 'Generate content'."
+            exit 1
           else
             git commit -m "chore: contenuto auto (${{ github.event.inputs.category }})"
             git push origin ${{ github.event.inputs.publish_branch }}
