@@ -1,7 +1,7 @@
 ---
 title: "SUV elettrico: ricarica più rapida e infotainment evoluto"
 description: "Aggiornamento OTA abilita la ricarica in corrente continua più veloce e introduce nuove funzioni connected."
-cover: "/site-automation-pro/images/placeholder.jpg"
+cover: cover: "/motori/images/placeholder.jpg"
 categories: ["News"]
 tags: ["auto","novità"]
 author: "Redazione"
