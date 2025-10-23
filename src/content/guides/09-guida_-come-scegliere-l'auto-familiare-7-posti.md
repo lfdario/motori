@@ -1,11 +1,11 @@
 ---
 title: "Guida: come scegliere l'auto familiare 7 posti"
 description: "Criteri di scelta, sicurezza e costi: una guida pratica per famiglie numerose."
-cover: cover: "/motori/images/placeholder.jpg"
+cover: "/motori/images/placeholder.jpg"
 categories: ["Guides"]
-tags: ["auto","novità"]
+tags: ["auto", "novità"]
 author: "Redazione"
-pubDate: "2025-10-15"
+pubDate: "2025-01-01"
 ---
 
 Criteri di scelta, sicurezza e costi: una guida pratica per famiglie numerose.
