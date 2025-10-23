@@ -1,7 +1,7 @@
 ---
 title: "Citycar a metano dismessa: cosa cambia per gli utenti"
 description: "Con l'uscita di listino delle citycar a metano, ecco le alternative più efficienti per la città."
-cover: cover: "/motori/images/placeholder.jpg"
+cover: "/motori/images/placeholder.jpg"
 categories: ["News"]
 tags: ["auto","novità"]
 author: "Redazione"
