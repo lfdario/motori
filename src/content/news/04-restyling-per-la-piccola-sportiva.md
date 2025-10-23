@@ -1,7 +1,7 @@
 ---
 title: "Restyling per la piccola sportiva"
 description: "Design rivisto, assetto più rigido e interni con materiali migliori."
-cover: cover: "/motori/images/placeholder.jpg"
+cover: "/motori/images/placeholder.jpg"
 categories: ["News"]
 tags: ["auto","novità"]
 author: "Redazione"
