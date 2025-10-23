@@ -10,9 +10,6 @@ on:
       prompt:
         description: "Tema/brief (IT). Es: SUV elettrico ricarica veloce 2025"
         required: true
-      image_query:
-        description: "Query immagine (es: suv elettrico su strada notturna)"
-        required: false
       publish_branch:
         description: "Branch di destinazione"
         required: true
@@ -34,7 +31,7 @@ jobs:
           node-version: 20
 
       - name: Install deps
-        run: npm install openai@4 node-html-parser@6
+        run: npm install openai@4
 
       - name: Generate content
         env:
@@ -42,7 +39,6 @@ jobs:
           UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
           CATEGORY: ${{ github.event.inputs.category }}
           USER_PROMPT: ${{ github.event.inputs.prompt }}
-          IMAGE_QUERY: ${{ github.event.inputs.image_query }}
         run: node scripts/generate-content.mjs
 
       - name: Commit & push
@@ -50,5 +46,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "chore: contenuto auto (${ {github.event.inputs.category} })" || echo "niente da commitare"
-          git push
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore: contenuto auto (${{ github.event.inputs.category }})"
+            git push origin ${{ github.event.inputs.publish_branch }}
+          fi
