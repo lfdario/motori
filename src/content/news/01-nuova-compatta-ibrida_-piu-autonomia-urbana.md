@@ -1,7 +1,7 @@
 ---
 title: "Nuova compatta ibrida: più autonomia urbana"
 description: "Debutta una compatta full-hybrid pensata per ridurre i consumi in città e offrire comfort nei tragitti extraurbani."
-cover: cover: "/motori/images/placeholder.jpg"
+cover: "/motori/images/placeholder.jpg"
 categories: ["News"]
 tags: ["auto","novità"]
 author: "Redazione"
