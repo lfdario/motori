@@ -1,0 +1,28 @@
+---
+import Base from "@/layouts/Base.astro";
+---
+<Base title="Cerca" noIndex={true}>
+  <h1 class="text-2xl font-bold mb-4">Cerca</h1>
+  <p class="text-sm opacity-80">Ricerca demo lato client. Per indicizzazione avanzata possiamo integrare Pagefind.</p>
+  <div id="search" class="mt-4">
+    <input id="q" placeholder="Cerca..." class="px-3 py-2 rounded-lg border w-full md:w-2/3"/>
+    <ul id="results" class="mt-4 grid gap-3"></ul>
+  </div>
+  <script type="module">
+    const q = document.getElementById('q');
+    const ul = document.getElementById('results');
+    const anchors = [...document.querySelectorAll('a')]
+      .filter(a => a.href.includes('/news/') || a.href.includes('/tests/') || a.href.includes('/guides/'));
+    const index = anchors.map(a => ({href:a.getAttribute('href'), text:a.textContent?.trim()}));
+    q.addEventListener('input', () => {
+      const s = q.value.toLowerCase();
+      ul.innerHTML = '';
+      if (!s) return;
+      index.filter(i => i.text?.toLowerCase().includes(s)).slice(0,20).forEach(i => {
+        const li = document.createElement('li');
+        li.innerHTML = `<a class="underline" href="${i.href}">${i.text}</a>`;
+        ul.appendChild(li);
+      });
+    });
+  </script>
+</Base>
