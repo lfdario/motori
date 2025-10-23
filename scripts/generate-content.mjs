@@ -1,26 +1,27 @@
 // scripts/generate-content.mjs
-// Genera un .md in src/content/<category>/ con cover in public/images/
-// Richiede: OPENAI_API_KEY, UNSPLASH_ACCESS_KEY
+// Genera un articolo in src/content/<category>/ e, se possibile, una cover in public/images/<slug>.jpg
+// Richiede nei Secrets del repo: OPENAI_API_KEY (obbligatorio), UNSPLASH_ACCESS_KEY (opzionale).
 
 import fs from "node:fs";
 import path from "node:path";
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
 
-// Input da workflow
-const CATEGORY = process.env.CATEGORY || "news"; // news | tests | guides
+// ====== INPUT DAL WORKFLOW ==================================================
+const CATEGORY = process.env.CATEGORY || "news"; // "news" | "tests" | "guides"
 const USER_PROMPT = process.env.USER_PROMPT || "Novità automotive";
-const IMAGE_QUERY = process.env.IMAGE_QUERY || USER_PROMPT;
+const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY || "";
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 
-// ---- Helper ---------------------------------------------------------------
-
+// Token che vogliamo scrivere letteralmente nel front-matter.
+// NON interpolarlo: deve restare letterale nel .md.
 const BASE_URL_TOKEN = "${import.meta.env.BASE_URL}";
-const root = process.cwd();
+
+// ====== UTIL ================================================================
 
 function slugify(s) {
-  return s
+  return String(s)
     .toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // rimuovi accenti
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // rimuove accenti
     .replace(/['’]/g, "-")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/-+/g, "-")
@@ -35,72 +36,79 @@ function ensureDir(p) {
   fs.mkdirSync(p, { recursive: true });
 }
 
-function quote(s) {
-  // escape doppi apici nel YAML
-  return String(s).replace(/"/g, '\\"');
+function quoteYAML(s) {
+  // Escapa i doppi apici e rimuovi CR che possono rompere YAML
+  return String(s).replace(/"/g, '\\"').replace(/\r/g, "");
 }
 
-// ---- OpenAI content generation -------------------------------------------
-
+// ====== OPENAI (risposta forzata in JSON) ==================================
 import OpenAI from "openai";
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+if (!OPENAI_API_KEY) {
+  console.error("❌ OPENAI_API_KEY mancante nei Secrets del repository.");
+  process.exit(1);
+}
+const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 const PROMPTS = {
   news: (brief) => `
-Sei un redattore auto. Scrivi una breve NEWS in italiano sul tema: "${brief}".
+Sei un redattore automotive. Scrivi una NEWS in italiano sul tema: "${brief}".
 Requisiti:
-- Titolo accattivante (massimo 80 caratteri).
-- Sottotitolo/descrizione (una frase, 140-180 caratteri).
-- Corpo: 4-6 paragrafi brevi con dati concreti e tono giornalistico.
-- Evita affermazioni non verificabili.
-RESTITUISCI in JSON: { "title": "...", "description":"...", "body":"<html semplice con <p>, <h2>, <ul> se serve>" }`,
+- title (<= 80 caratteri, senza virgolette)
+- description (140–180 caratteri)
+- body (HTML semplice con <p>, <h2>, <ul> se serve). Niente markdown.
+Restituisci SOLO un JSON con chiavi: title, description, body.
+`,
   tests: (brief) => `
-Sei un tester auto. Scrivi una PROVA su strada in italiano sul tema: "${brief}".
-Requisiti:
-- Titolo forte (<= 80).
-- Descrizione sintetica (140-180).
-- Struttura corpo in HTML semplice con sezioni:
-  <h2>Come va</h2> <p>...</p>
-  <h2>Consumi</h2> <p>...</p>
-  <h2>Tecnologia e ADAS</h2> <p>...</p>
-  <h2>Pro e Contro</h2> <ul><li>Pro: ...</li><li>Contro: ...</li></ul>
-  <h2>Pagella</h2> <ul><li>Comfort: 8/10</li>...</ul>
-- Tono chiaro, dati verosimili (indicativi), niente esagerazioni.
-JSON: { "title":"...", "description":"...", "body":"<html...>" }`,
+Sei un tester auto. Scrivi una PROVA in italiano sul tema: "${brief}".
+Requisiti: title (<=80), description (140–180), body in HTML con sezioni:
+<h2>Come va</h2>, <h2>Consumi</h2>, <h2>Tecnologia e ADAS</h2>,
+<h2>Pro e Contro</h2> (lista), <h2>Pagella</h2> (lista voti).
+Solo JSON con: title, description, body.
+`,
   guides: (brief) => `
-Sei un autore di guide auto. Scrivi una GUIDA in italiano sul tema: "${brief}".
-Requisiti:
-- Titolo chiaro (<= 80).
-- Descrizione (140-180).
-- Corpo in HTML con sezioni:
-  <h2>Perché è importante</h2>
-  <h2>I punti chiave</h2> (lista)
-  <h2>Costi e incentivi</h2>
-  <h2>Checklist finale</h2>
-JSON: { "title":"...", "description":"...", "body":"<html...>" }`,
+Sei un autore di guide auto. Scrivi una GUIDA in italiano: "${brief}".
+Requisiti: title (<=80), description (140–180), body HTML con:
+<h2>Perché è importante</h2>, <h2>I punti chiave</h2> (lista),
+<h2>Costi e incentivi</h2>, <h2>Checklist finale</h2>.
+Solo JSON con: title, description, body.
+`,
 };
 
 async function generateStructuredJSON(kind, brief) {
-  const prompt = PROMPTS[kind](brief);
+  const prompt = PROMPTS[kind] ? PROMPTS[kind](brief) : PROMPTS.news(brief);
+
   const res = await openai.chat.completions.create({
     model: "gpt-4o-mini",
-    messages: [{ role: "user", content: prompt }],
     temperature: 0.7,
+    // 👇 forza una risposta JSON valida
+    response_format: { type: "json_object" },
+    messages: [{ role: "user", content: prompt }],
   });
-  let text = res.choices[0].message.content.trim();
-  // Prova a trovare JSON nel testo
-  const jsonMatch = text.match(/\{[\s\S]*\}$/);
-  if (!jsonMatch) throw new Error("JSON non trovato nella risposta");
-  return JSON.parse(jsonMatch[0]);
+
+  let text = res.choices?.[0]?.message?.content?.trim() ?? "";
+  // safety: rimuovi eventuali fence per scrupolo
+  text = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+
+  try {
+    const json = JSON.parse(text);
+    if (!json.title || !json.description || !json.body) {
+      throw new Error("JSON senza campi obbligatori");
+    }
+    return json;
+  } catch (e) {
+    console.error("Risposta non JSON o incompleta:\n", text);
+    throw new Error("JSON non trovato o non valido");
+  }
 }
 
-// ---- Unsplash download ----------------------------------------------------
+// ====== UNSPLASH (opzionale) ===============================================
 
 async function fetchJSON(url, headers = {}) {
   const r = await fetch(url, { headers });
   if (!r.ok) throw new Error(`HTTP ${r.status} ${url}`);
   return await r.json();
 }
+
 async function fetchImageBuffer(url) {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`HTTP ${r.status} ${url}`);
@@ -108,62 +116,84 @@ async function fetchImageBuffer(url) {
 }
 
 async function downloadUnsplash(query, outPath) {
-  if (!process.env.UNSPLASH_ACCESS_KEY) return false;
-  const api = "https://api.unsplash.com/search/photos";
-  const data = await fetchJSON(`${api}?per_page=1&query=${encodeURIComponent(query)}`, {
-    Authorization: `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}`,
-  });
-  const photo = data?.results?.[0];
-  if (!photo) return false;
-  const url = photo.urls?.regular || photo.urls?.full || photo.urls?.small;
-  if (!url) return false;
-  const buf = await fetchImageBuffer(url);
-  ensureDir(path.dirname(outPath));
-  fs.writeFileSync(outPath, buf);
-  return true;
+  if (!UNSPLASH_ACCESS_KEY) return false;
+  try {
+    const api = "https://api.unsplash.com/search/photos";
+    const data = await fetchJSON(
+      `${api}?per_page=1&query=${encodeURIComponent(query)}`,
+      { Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}` }
+    );
+    const photo = data?.results?.[0];
+    if (!photo) return false;
+    const url = photo.urls?.regular || photo.urls?.full || photo.urls?.small;
+    if (!url) return false;
+    const buf = await fetchImageBuffer(url);
+    ensureDir(path.dirname(outPath));
+    fs.writeFileSync(outPath, buf);
+    return true;
+  } catch (e) {
+    console.warn("⚠️  Download Unsplash fallito:", e.message);
+    return false;
+  }
 }
 
-// ---- Main ----------------------------------------------------------------
+// ====== MAIN ===============================================================
 
 (async () => {
-  console.log(`→ Generazione: ${CATEGORY} | brief="${USER_PROMPT}"`);
-  const { title, description, body } = await generateStructuredJSON(CATEGORY, USER_PROMPT);
-
-  const slug = slugify(title);
-  const mdDir = path.join(root, "src", "content", CATEGORY === "tests" ? "tests" : CATEGORY);
-  const imgDir = path.join(root, "public", "images");
-  ensureDir(mdDir);
-  ensureDir(imgDir);
-
-  // Cover
-  const coverFile = path.join(imgDir, `${slug}.jpg`);
   try {
-    const ok = await downloadUnsplash(IMAGE_QUERY || title, coverFile);
-    if (!ok) console.warn("⚠️  Nessuna immagine da Unsplash: userai placeholder se presente.");
+    console.log(`→ Generazione: ${CATEGORY} | brief="${USER_PROMPT}"`);
+
+    const { title, description, body } = await generateStructuredJSON(
+      CATEGORY,
+      USER_PROMPT
+    );
+
+    const slug = slugify(title);
+    const mdDir = path.join(
+      process.cwd(),
+      "src",
+      "content",
+      CATEGORY === "tests" ? "tests" : CATEGORY
+    );
+    const imgDir = path.join(process.cwd(), "public", "images");
+    ensureDir(mdDir);
+    ensureDir(imgDir);
+
+    // Cover: tenta Unsplash; se fallisce, userai il placeholder nel sito
+    const coverFilename = `${slug}.jpg`;
+    const coverFile = path.join(imgDir, coverFilename);
+    let coverExists = false;
+    if (await downloadUnsplash(USER_PROMPT, coverFile)) {
+      coverExists = true;
+      console.log(`✔ Cover scaricata: public/images/${coverFilename}`);
+    } else {
+      console.log("ℹ️ Nessuna cover scaricata: userai il placeholder.");
+    }
+
+    // Front-matter YAML (sempre quotato)
+    const frontmatter = [
+      "---",
+      `title: "${quoteYAML(title)}"`,
+      `description: "${quoteYAML(description)}"`,
+      `cover: "${coverExists ? `${BASE_URL_TOKEN}images/${coverFilename}` : `${BASE_URL_TOKEN}images/placeholder.jpg`}"`,
+      `categories: ["${CATEGORY === "tests" ? "Tests" : CATEGORY.charAt(0).toUpperCase() + CATEGORY.slice(1)}"]`,
+      `tags: ["auto", "novità"]`,
+      `author: "Redazione"`,
+      `pubDate: "${todayISO()}"`,
+      "---",
+      "",
+    ].join("\n");
+
+    // Corpo: HTML semplice restituito dal modello
+    const content = `${frontmatter}\n${body}\n`;
+
+    const mdFile = path.join(mdDir, `${slug}.md`);
+    fs.writeFileSync(mdFile, content, "utf-8");
+
+    console.log(`✔ Articolo creato: ${path.relative(process.cwd(), mdFile)}`);
+    console.log("✅ Fatto. Fai partire il deploy (workflow Pages) e verifica il sito.");
   } catch (e) {
-    console.warn("⚠️  Download immagine fallito:", e.message);
+    console.error("❌ Errore:", e.message);
+    process.exit(1);
   }
-
-  // Front-matter (SEMPre quotato)
-  const frontmatter = [
-    "---",
-    `title: "${quote(title)}"`,
-    `description: "${quote(description)}"`,
-    `cover: "${BASE_URL_TOKEN}images/${slug}.jpg"`,
-    `categories: ["${CATEGORY === "tests" ? "Tests" : CATEGORY.charAt(0).toUpperCase() + CATEGORY.slice(1)}"]`,
-    `tags: ["auto","novità"]`,
-    `author: "Redazione"`,
-    `pubDate: "${todayISO()}"`,
-    "---",
-    "",
-  ].join("\n");
-
-  // Corpo: accettiamo HTML semplice dentro il markdown
-  const content = `${frontmatter}\n${body}\n`;
-
-  const mdFile = path.join(mdDir, `${slug}.md`);
-  fs.writeFileSync(mdFile, content, "utf-8");
-
-  console.log(`✔ Articolo creato: ${path.relative(root, mdFile)}`);
-  console.log(`✔ Cover: ${path.relative(root, coverFile)} (se scaricata)`);
 })();
