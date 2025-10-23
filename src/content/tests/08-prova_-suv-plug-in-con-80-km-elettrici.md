@@ -1,7 +1,7 @@
 ---
 title: "Prova: SUV plug-in con 80 km elettrici"
 description: "Nel quotidiano si viaggia a zero emissioni, ma in autostrada contano efficienza e comfort."
-cover: cover: "/motori/images/placeholder.jpg"
+cover: "/motori/images/placeholder.jpg"
 categories: ["Tests"]
 tags: ["auto","novità"]
 author: "Redazione"
