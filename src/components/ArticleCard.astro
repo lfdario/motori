@@ -1,9 +1,7 @@
 ---
 const { href, cover, title, excerpt, category, date } = Astro.props;
-
-// Copertura: se il front-matter usa ancora /site-automation-pro/, normalizziamo a /motori/
-const normalizedCover = (cover || "/motori/images/placeholder.jpg")
-  .replace("/site-automation-pro/", "/motori/");
+const fallback = `${import.meta.env.BASE_URL}images/placeholder.jpg`;
+const normalizedCover = (cover || fallback).replace("/site-automation-pro/", import.meta.env.BASE_URL);
 ---
 <article class="group grid md:grid-cols-[220px,1fr] gap-4 p-3 rounded-2xl border bg-white/70 dark:bg-gray-900/70 hover:shadow-md transition-shadow">
   <a href={href} class="block overflow-hidden rounded-xl">
