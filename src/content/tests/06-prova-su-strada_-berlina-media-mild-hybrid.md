@@ -1,7 +1,7 @@
 ---
 title: "Prova su strada: berlina media mild-hybrid"
 description: "Comfort, consumi e dotazione ADAS messi alla prova su percorsi misti. Ecco come va."
-cover: cover: "/motori/images/placeholder.jpg"
+cover: "/motori/images/placeholder.jpg"
 categories: ["Tests"]
 tags: ["auto","novità"]
 author: "Redazione"
