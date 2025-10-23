@@ -1,7 +1,7 @@
 ---
 title: "Novità infotainment 2025"
 description: "Nuove interfacce più rapide e integrazione con assistenti vocali di terze parti."
-cover: cover: "/motori/images/placeholder.jpg"
+cover: "/motori/images/placeholder.jpg"
 categories: ["News"]
 tags: ["auto","novità"]
 author: "Redazione"
