@@ -1,0 +1,11 @@
+---
+import Post from "@/layouts/Post.astro";
+import { getEntry } from "astro:content";
+const { slug } = Astro.params;
+const entry = await getEntry("news", slug);
+if (!entry) throw new Error(`News non trovata: ${slug}`);
+const { Content } = await entry.render();
+---
+<Post {...entry.data}>
+  <Content />
+</Post>
